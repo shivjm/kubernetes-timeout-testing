@@ -5,51 +5,63 @@ const ONE_HOUR_MS = 60 * 60 * 1000;
 const [_node, _script, url, proxy] = process.argv;
 
 const args = [
-  "--disable-accelerated-2d-canvas",
-  "--disable-gpu",
+    "--disable-accelerated-2d-canvas",
+    "--disable-gpu",
 ];
 
 if (proxy !== undefined) {
-  args.push(`--proxy-server=${proxy}`);
+    args.push(`--proxy-server=${proxy}`);
 }
 
-if (process.env.IN_DOCKER === "1") {
-  args.push("--no-sandbox");
-  args.push("--disable-dev-shm-usage=true");
+const DOCKER = process.env.IN_DOCKER === "1";
+
+if (DOCKER) {
+    args.push("--no-sandbox");
+    args.push("--disable-dev-shm-usage=true");
 }
 
-let browser, start;
+const KUBERNETES = process.env.IN_KUBERNETES === "1";
 
 async function run() {
-  console.log("Launching browser...");
-  browser = await puppeteer.launch({
-    args,
-    headless: true,
-    ignoreHTTPSErrors: true,
-  });
+    console.log(
+      `Launching browser (Docker: ${DOCKER}, Kubernetes: ${KUBERNETES})...`);
+    const browser = await puppeteer.launch({
+        args,
+        headless: true,
+        ignoreHTTPSErrors: true,
+    });
 
-  console.log("Opening tab...");
-  const page = await browser.newPage();
-  page.setDefaultNavigationTimeout(ONE_HOUR_MS);
+    const start = new Date();
 
-  start = new Date();
-  console.log("Opening URL...");
-  await page.goto(url);
+    await Promise.all([
+        openWithTimeoutMethod(browser, "setDefaultTimeout", start),
+        openWithTimeoutMethod(browser, "setDefaultNavigationTimeout",
+            start),
+    ]);
 
-  console.log(
-    `Closing browser after ${elapsed(start).toLocaleString()} seconds...`);
-  await browser.close();
+    await browser.close();
+}
+
+async function openWithTimeoutMethod(browser, method, start) {
+    console.log(`[${method}] Opening tab...`);
+    const page = await browser.newPage();
+    page[method](ONE_HOUR_MS);
+
+    try {
+        console.log(`[${method}] Visiting URL...`);
+        await page.goto(url);
+
+        console.log(
+            `[${method}] Succeeded in ${elapsed(start).toLocaleString()} seconds.`);
+    } catch (e) {
+        console.log(
+            `[${method}] Failed in ${elapsed(start).toLocaleString()} seconds:`, e.message);
+    }
 }
 
 function elapsed(start) {
-  const end = new Date();
-  return (end - start) / 1000;
+    const end = new Date();
+    return (end - start) / 1000;
 }
 
-run().catch(async (e) => {
-  console.error(
-    `Failed after ${elapsed(start).toLocaleString()} seconds`,
-    e.stack);
-
-  await browser.close();
-});
+run();
