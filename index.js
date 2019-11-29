@@ -30,7 +30,7 @@ async function run() {
 
   console.log("Opening tab...");
   const page = await browser.newPage();
-  page.setDefaultTimeout(ONE_HOUR_MS);
+  page.setDefaultNavigationTimeout(ONE_HOUR_MS);
 
   start = new Date();
   console.log("Opening URL...");
