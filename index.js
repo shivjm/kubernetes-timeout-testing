@@ -18,7 +18,7 @@ if (process.env.IN_DOCKER === "1") {
   args.push("--disable-dev-shm-usage=true");
 }
 
-let browser;
+let browser, start;
 
 async function run() {
   console.log("Launching browser...");
@@ -32,14 +32,24 @@ async function run() {
   const page = await browser.newPage();
   page.setDefaultTimeout(ONE_HOUR_MS);
 
+  start = new Date();
   console.log("Opening URL...");
   await page.goto(url);
 
-  console.log("Closing browser...");
+  console.log(
+    `Closing browser after ${elapsed(start).toLocaleString()} seconds...`);
   await browser.close();
 }
 
+function elapsed(start) {
+  const end = new Date();
+  return (end - start) / 1000;
+}
+
 run().catch(async (e) => {
-  console.error(e.stack);
+  console.error(
+    `Failed after ${elapsed(start).toLocaleString()} seconds`,
+    e.stack);
+
   await browser.close();
 });
