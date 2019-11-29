@@ -2,6 +2,11 @@ const puppeteer = require("puppeteer");
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
+if (process.argv.length < 3) {
+  throw new Error(
+    `You must specify a URL and optionally a proxy server (including the protocol).`)
+}
+
 const [_node, _script, url, proxy] = process.argv;
 
 const args = [
